@@ -1,17 +1,40 @@
 """
 main.py
 
-Took: 27 Mins
-
 Author:
 Nilusink
 """
+from tkinter import filedialog as fd
 from datetime import datetime, date
 import matplotlib.pyplot as plt
 
 
-FILEPATH: str = "./AbsenceList_20250307_0903.csv"
+# settings
 SEP: str = "\t"
+
+
+# multi lang support
+TIME_FORMATS: dict[str, str] = {  # first key content -> time format
+    "Full name": "%b %d, %Y, %I:%M %p",
+    "Langname": "%d.%m.%Y, %H:%M"
+}
+TRANSLATION_KEY: list[tuple[str, list[str]]] = [
+    ("Full name", ["Langname"]),
+    ("First name", ["Vorname"]),
+    ("ID", []),
+    ("Class", ["Klasse"]),
+    ("Start date", ["Beginndatum"]),
+    ("Start time", ["Beginnzeit"]),
+    ("End date", ["Enddatum"]),
+    ("End time", ["Endzeit"]),
+    ("Interruptions", ["Unterbrechungen"]),
+    ("Reason of absence", ["Abwesenheitsgrund"]),
+    ("Text/Reason", ["Text/Grund"]),
+    ("Excuse number", ["Entschuldigungsnummer"]),
+    ("Status", []),
+    ("Text for the excuse", ["Entschuldigungstext"]),
+    ("reported by student", ["gemeldet von Schüler*in"])
+]
 
 
 def read_csv(file: str, sep: str = ";") -> list[dict]:
@@ -23,9 +46,32 @@ def read_csv(file: str, sep: str = ";") -> list[dict]:
 
         headers = lines[0].split(sep)
 
+        try:
+            time_format = TIME_FORMATS[headers[0]]
+
+        except KeyError:
+            raise RuntimeError("Unsupported CSV Language")
+
+        for i in range(len(headers)):
+            if headers[i] in TRANSLATION_KEY[i][1]:
+                print(f"Translating {headers[i]} -> {TRANSLATION_KEY[i][0]}")
+                headers[i] = TRANSLATION_KEY[i][0]
+
         out = []
         for line in lines[1:]:
-            out.append(dict(zip(headers, line.split(sep))))
+            line = dict(zip(headers, line.split(sep)))
+
+            # convert time to datetime
+            line["start"] = datetime.strptime(
+                f"{line["Start date"]}, {line["Start time"]}",
+                time_format
+            )
+            line["end"] = datetime.strptime(
+                f"{line["End date"]}, {line["End time"]}",
+                time_format
+            )
+
+            out.append(line)
 
         return out
 
@@ -37,8 +83,8 @@ def calculate_time(line: dict, in_school_hours: bool = True) -> tuple[date, floa
     :param line: line to calculate
     :param in_school_hours: 60 min or 50 min intervals
     """
-    start = datetime.strptime(f"{line["Start date"]}, {line["Start time"]}", "%b %d, %Y, %I:%M %p")
-    end = datetime.strptime(f"{line["End date"]}, {line["End time"]}", "%b %d, %Y, %I:%M %p")
+    start = line["start"]
+    end = line["end"]
 
     # get date
     d = start.date()
@@ -68,8 +114,13 @@ def cumsum(data: list[float]) -> list[float]:
     return out
 
 
-def main() -> None:
-    data = read_csv(FILEPATH, sep=SEP)
+def plot_absence(file_path: str, context: type[plt]) -> None:
+    """
+    plot a persons absence
+    :param file_path: absence CSV file
+    :param context: matplotlib context
+    """
+    data = read_csv(file_path, sep=SEP)
 
     delta_data = []
     for line in data:
@@ -101,10 +152,28 @@ def main() -> None:
     # sum all y values
     ys_cumm = cumsum(ys)
 
-    print(f"total time: {ys_cumm[-1]:.1f}")
+    name = (f"{data[0]['Full name']} "
+            f"{data[0]['First name']} "
+            f"({data[0]['Class']}, "
+            f"{ys_cumm[-1]:.0f} h)")
+
+    context.plot(xs, ys_cumm, label=name)
+
+
+def main() -> None:
+    # plot people
+    files = fd.askopenfilenames(
+        filetypes=[("CSV files", "*.csv")],
+        title="Open absence file",
+        # initialdir="/",
+    )
+
+    for file in files:
+        plot_absence(file, plt)
+        # plot_absence("./AbsenceList_20250311_1008.csv", plt)
 
     # plot
-    plt.plot(xs, ys_cumm)
+    plt.legend()
     plt.grid()
     plt.show()
 
