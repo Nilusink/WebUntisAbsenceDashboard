@@ -9,6 +9,7 @@ Nilusink
 """
 from tkinter.filedialog import askopenfilename
 from datetime import time, datetime
+from enum import Enum
 import typing as tp
 import os
 
@@ -36,6 +37,7 @@ TRANSLATION_KEY: list[tuple[str, list[str]]] = [
     ("reported by student", ["gemeldet von Schüler*in"])
 ]
 
+
 # types
 type Period = tuple[time, time]
 
@@ -43,8 +45,8 @@ type Period = tuple[time, time]
 AbsenceLine = tp.TypedDict(
     "AbsenceLine",
     {
-        "Full Name": str,
-        "First Name": str,
+        "Full name": str,
+        "First name": str,
         "ID": str,
         "Class": str,
         "Start date": str,
@@ -63,6 +65,14 @@ AbsenceLine = tp.TypedDict(
     }
 )
 
+
+class ExcuseStatus(Enum):
+    not_excused = "not excused"
+    excused = "excused"
+    both = "both"
+
+
+# classes
 class TimeTable:
     """
     basic timetable (only long breaks (lunch brake) included)
@@ -108,8 +118,6 @@ class TimeTable:
 
             # keep track if an absence was corrected
             if corrected_start != absence_start or corrected_end != absence_end:
-                print(f"corrected ({absence_line['start'].date()}, {absence_line['start'].strftime("%A")}): "
-                      f"{absence_start}, {absence_end} -> {corrected_start}, {corrected_end}")
                 corrected = True
 
             if corrected_start < corrected_end:  # Ensure valid period
@@ -124,9 +132,17 @@ class TimeTable:
 
                 corrected_absences.append(corrected_absence)
 
+        if corrected:
+            print(f"corrected ({absence_line['start'].date()}, "
+                  f"{absence_line['start'].strftime("%A")}): "
+                  f"{absence_start} - {absence_end} -> {'; '.join(
+                      f'{a['Start time']} - {a['End time']}' for a in corrected_absences
+                  )}")
+
         return corrected_absences, corrected
 
 
+# functions
 def read_csv(file: str, sep: str = ";") -> tuple[list[AbsenceLine], bool]:
     """
     read a csv file
@@ -250,7 +266,49 @@ TIMETABLES = {
         [
             (time(8, 00), time(13, 20)),
         ]
-    )
+    ),
+    "5CHEL": TimeTable(
+        [
+            (time(8, 00), time(12, 30)),
+            (time(13, 20), time(16, 55))
+        ],
+        [
+            (time(8, 00), time(13, 20)),
+            (time(14, 10), time(16, 55))
+        ],
+        [
+            (time(8, 00), time(11, 35)),
+            (time(12, 30), time(14, 10))
+        ],
+        [
+            (time(8, 00), time(11, 35)),
+            (time(12, 30), time(16, 55))
+        ],
+        [
+            (time(8, 00), time(12, 30)),
+        ]
+    ),
+    "4BHEL": TimeTable(
+        [
+            (time(8, 00), time(12, 30)),
+            (time(13, 20), time(16, 5))
+        ],
+        [
+            (time(8, 00), time(12, 30)),
+            (time(13, 20), time(16, 55))
+        ],
+        [
+            (time(8, 00), time(12, 30)),
+            (time(13, 20), time(16, 55))
+        ],
+        [
+            (time(8, 00), time(13, 20)),
+        ],
+        [
+            (time(8, 00), time(13, 20)),
+            (time(14, 10), time(16, 55))
+        ]
+    ),
 }
 
 

@@ -8,13 +8,13 @@ from datetime import datetime, date, time, timedelta
 import matplotlib.pyplot as plt
 import os
 
-
-from time_corrector import read_csv
+from time_corrector import read_csv, ExcuseStatus
 
 
 # settings
 SEP: str = "\t"
 DATA_DIR: str = "./data/"
+EXCUSE_STATUS: ExcuseStatus = ExcuseStatus.both
 CONST_BREAKS: list[tuple[time, time, timedelta]] = [
     (time(9, 40), time(9, 55), timedelta(minutes=15)),
     (time(11, 35), time(11, 40), timedelta(minutes=5)),
@@ -67,12 +67,13 @@ def cumsum(data: list[float]) -> list[float]:
     return out
 
 
-def plot_absence(file_path: str, context: type[plt]) -> float:
+def plot_absence(file_path: str, context: type[plt], status: ExcuseStatus) -> float:
     """
     plot a persons absence
 
     :param file_path:  CSV file
     :param context: matplotlib context
+    :param status: can be excused, not excused or both
     :return: total absence in school hours
     """
     data, corrected = read_csv(file_path, sep=SEP)
@@ -82,6 +83,12 @@ def plot_absence(file_path: str, context: type[plt]) -> float:
 
     delta_data = []
     for line in data:
+        if status == ExcuseStatus.excused and line["Status"] != "entsch.":
+            continue
+
+        elif status == ExcuseStatus.not_excused and line["Status"] != "nicht entsch.":
+            continue
+
         delta_data.append(calculate_time(line, in_school_hours=True))
 
     # sum all data for one day
@@ -110,10 +117,17 @@ def plot_absence(file_path: str, context: type[plt]) -> float:
     # sum all y values
     ys_cumm = cumsum(ys)
 
-    name = (f"{data[0]['Full name']} "
-            f"{data[0]['First name']} "
-            f"({data[0]['Class']}, "
-            f"{ys_cumm[-1].__ceil__():.0f} h)")
+    name = (
+        f"{data[0]['Full name']} "
+        f"{data[0]['First name']} "
+        f"({data[0]['Class']}"
+    )
+
+    if len(xs) == 0:
+        print(f"No \"{status}\" absences for {name})")
+        return 0
+
+    name += f", {ys_cumm[-1].__ceil__():.0f} h)"
 
     context.plot(xs, ys_cumm, label=name)
 
@@ -131,7 +145,14 @@ def main() -> None:
     # plot files
     total_times = []
     for file in files:
-        total_times.append(plot_absence(os.path.join(DATA_DIR, file), plt))
+        total = plot_absence(
+            os.path.join(DATA_DIR, file),
+            plt,
+            EXCUSE_STATUS
+        )
+
+        if total > 0:
+            total_times.append(total)
 
     # plot
     # Get handles and labels
@@ -149,7 +170,15 @@ def main() -> None:
     plt.legend(sorted_handles, sorted_labels)
 
     # plot settings
-    # plt.legend()
+    if EXCUSE_STATUS == ExcuseStatus.both:
+        plt.title(f"Total absences")
+
+    elif EXCUSE_STATUS == ExcuseStatus.excused:
+        plt.title(f"Excused absences")
+
+    else:
+        plt.title(f"Unexcused absences")
+
     plt.grid()
     plt.show()
 

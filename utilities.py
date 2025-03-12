@@ -1,6 +1,0 @@
-"""
-utilities.py
-
-Author:
-Nilusink
-"""
