@@ -5,9 +5,11 @@ Author:
 Nilusink
 """
 from datetime import datetime, date, time, timedelta
-# from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
 import os
+
+
+from time_corrector import read_csv
 
 
 # settings
@@ -18,70 +20,6 @@ CONST_BREAKS: list[tuple[time, time, timedelta]] = [
     (time(11, 35), time(11, 40), timedelta(minutes=5)),
     (time(15, 0), time(15, 15), timedelta(minutes=15))
 ]
-
-
-# multi lang support
-TIME_FORMATS: dict[str, str] = {  # first key content -> time format
-    "Full name": "%b %d, %Y, %I:%M %p",
-    "Langname": "%d.%m.%Y, %H:%M"
-}
-TRANSLATION_KEY: list[tuple[str, list[str]]] = [
-    ("Full name", ["Langname"]),
-    ("First name", ["Vorname"]),
-    ("ID", []),
-    ("Class", ["Klasse"]),
-    ("Start date", ["Beginndatum"]),
-    ("Start time", ["Beginnzeit"]),
-    ("End date", ["Enddatum"]),
-    ("End time", ["Endzeit"]),
-    ("Interruptions", ["Unterbrechungen"]),
-    ("Reason of absence", ["Abwesenheitsgrund"]),
-    ("Text/Reason", ["Text/Grund"]),
-    ("Excuse number", ["Entschuldigungsnummer"]),
-    ("Status", []),
-    ("Text for the excuse", ["Entschuldigungstext"]),
-    ("reported by student", ["gemeldet von Schüler*in"])
-]
-
-
-def read_csv(file: str, sep: str = ";") -> list[dict]:
-    """
-    read a csv file
-    """
-    with open(file, "r", encoding="utf-8") as file:
-        lines = file.readlines()
-
-        headers = lines[0].split(sep)
-
-        # choose time format based on csv file language
-        try:
-            time_format = TIME_FORMATS[headers[0]]
-
-        except KeyError:
-            raise RuntimeError("Unsupported CSV Language")
-
-        # translate csv keys to english
-        for i in range(len(headers)):
-            if headers[i] in TRANSLATION_KEY[i][1]:
-                headers[i] = TRANSLATION_KEY[i][0]
-
-        out = []
-        for line in lines[1:]:
-            line = dict(zip(headers, line.split(sep)))
-
-            # convert time to datetime
-            line["start"] = datetime.strptime(
-                f"{line['Start date']}, {line['Start time']}",
-                time_format
-            )
-            line["end"] = datetime.strptime(
-                f"{line['End date']}, {line['End time']}",
-                time_format
-            )
-
-            out.append(line)
-
-        return out
 
 
 def calculate_time(line: dict, in_school_hours: bool = True) -> tuple[date, float]:
@@ -137,7 +75,10 @@ def plot_absence(file_path: str, context: type[plt]) -> float:
     :param context: matplotlib context
     :return: total absence in school hours
     """
-    data = read_csv(file_path, sep=SEP)
+    data, corrected = read_csv(file_path, sep=SEP)
+
+    if corrected:
+        print(f"file: ", file_path)
 
     delta_data = []
     for line in data:
@@ -181,13 +122,9 @@ def plot_absence(file_path: str, context: type[plt]) -> float:
 
 def main() -> None:
     # plot people
-    # files = fd.askopenfilenames(
-    #     filetypes=[("CSV files", "*.csv")],
-    #     title="Open absence file",
-    # )
-
     files = [file for file in os.listdir(DATA_DIR) if file.endswith(".csv")]
 
+    # exit if no files were selected
     if len(files) == 0:
         exit(0)
 

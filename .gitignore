@@ -3,3 +3,4 @@ venv/*
 .idea/*
 *.csv
 *.csv.bup
+__pychache__/
