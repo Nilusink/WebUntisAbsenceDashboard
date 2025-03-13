@@ -82,13 +82,14 @@ def plot_absence(
     :param status: can be excused, not excused or both
     :return: total absence in school hours
     """
-    data, corrected = read_csv(file_path, sep=SEP)
+    original_data, corrected = read_csv(file_path, sep=SEP)
 
     if corrected:
         print(f"file: ", file_path)
 
+    data = []
     delta_data = []
-    for line in data:
+    for line in original_data:
         if status == ExcuseStatus.excused and line["Status"] != "entsch.":
             continue
 
@@ -96,6 +97,7 @@ def plot_absence(
             continue
 
         # show all over 1 year
+        data.append(line)
         line = line.copy()  # disassociate to not tamper with data permanently
         if line["start"].month > 7:
             if line["start"].year != 2024:
@@ -136,9 +138,9 @@ def plot_absence(
     ys_cumm = cumsum(ys)
 
     name = (
-        f"{data[0]['Full name']} "
-        f"{data[0]['First name']} "
-        f"({data[0]['Class']}"
+        f"{original_data[0]['Full name']} "
+        f"{original_data[0]['First name']} "
+        f"({original_data[0]['Class']}"
     )
 
     if len(xs) == 0:
