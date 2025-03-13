@@ -184,20 +184,11 @@ def read_csv(file: str, sep: str = ";") -> tuple[list[AbsenceLine], bool]:
                 time_format
             )
 
-            # show all over 1 year
             if line["start"].month > 7:
                 year = line["start"].year
 
-                if line["start"].year != 2024:
-                    line["start"] = line["start"].replace(year=2024)
-                    line["end"] = line["end"].replace(year=2024)
-
             else:
                 year = line["start"].year - 1  # set to starting year (2024/2025 -> 2024)
-
-                if line["start"].year != 2025:
-                    line["start"] = line["start"].replace(year=2025)
-                    line["end"] = line["end"].replace(year=2025)
 
             # try to correct with timetable
             if year in TIMETABLES and line["Class"] in TIMETABLES[year]:
@@ -283,7 +274,8 @@ TIMETABLES = {
                 (time(8, 00), time(13, 20)),
             ],
             [
-                (time(8, 00), time(13, 20)),
+                (time(8, 00), time(8, 50)),
+                (time(9, 55), time(13, 20))
             ]
         ),
         "5CHEL": TimeTable(
@@ -330,6 +322,18 @@ TIMETABLES = {
         ),
     }
 }
+TIME_PERIODS = [
+    (time(8, 00), time(8, 50)),
+    (time(8, 50), time(9, 40)),
+    (time(9, 55), time(10, 45)),
+    (time(10, 45), time(11, 35)),
+    (time(11, 40), time(12, 30)),
+    (time(12, 30), time(13, 20)),
+    (time(13, 20), time(14, 10)),
+    (time(14, 10), time(15, 00)),
+    (time(15, 15), time(16, 5)),
+    (time(16, 5), time(16, 55)),
+]
 
 
 if __name__ == "__main__":
