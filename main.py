@@ -8,7 +8,7 @@ from datetime import datetime, date, time, timedelta
 import matplotlib.pyplot as plt
 import os
 
-from time_corrector import read_csv, ExcuseStatus
+from time_corrector import read_csv, ExcuseStatus, AbsenceLine
 
 
 # settings
@@ -67,7 +67,11 @@ def cumsum(data: list[float]) -> list[float]:
     return out
 
 
-def plot_absence(file_path: str, context: type[plt], status: ExcuseStatus) -> float:
+def plot_absence(
+        file_path: str,
+        context: type[plt],
+        status: ExcuseStatus
+) -> tuple[float, list[AbsenceLine]]:
     """
     plot a persons absence
 
@@ -125,13 +129,32 @@ def plot_absence(file_path: str, context: type[plt], status: ExcuseStatus) -> fl
 
     if len(xs) == 0:
         print(f"No \"{status}\" absences for {name})")
-        return 0
+        return 0, []
 
     name += f", {ys_cumm[-1].__ceil__():.0f} h)"
 
-    context.plot(xs, ys_cumm, label=name)
+    # plot graph
+    context.step(xs, ys_cumm, label=name, where="post")
 
-    return ys_cumm[-1]
+    return ys_cumm[-1], data
+
+
+def absence_reason(data: list[list[AbsenceLine]], context) -> None:
+    """
+    bar plot showing the most used absence reasons
+    """
+    reasons: dict[str, int] = {}
+    for person in data:
+        for absence in person:
+            # if not in reasons yet, create
+            if absence["Reason of absence"] not in reasons:
+                reasons[absence["Reason of absence"]] = 0
+
+            # increase reason count by 1
+            reasons[absence["Reason of absence"]] += 1
+
+    print(reasons)
+    context.bar(reasons.keys(), reasons.values())
 
 
 def main() -> None:
@@ -143,31 +166,38 @@ def main() -> None:
         exit(0)
 
     # plot files
+    fig, axes = plt.subplots(2, 1)
     total_times = []
+    all_data: list[list[AbsenceLine]] = []
     for file in files:
-        total = plot_absence(
+        total, data = plot_absence(
             os.path.join(DATA_DIR, file),
-            plt,
+            axes[0],
             EXCUSE_STATUS
         )
 
         if total > 0:
             total_times.append(total)
 
+        all_data.append(data)
+
+    absence_reason(all_data, axes[1])
+
     # plot
     # Get handles and labels
-    handles, labels = plt.gca().get_legend_handles_labels()
+    handles, labels = axes[0].get_legend_handles_labels()
 
     # Sort labels and handles together
     sorted_handles_labels = sorted(
         zip(labels, handles),
-        key=lambda x: total_times[labels.index(x[0])],
+        key=lambda x: total_times[labels.index(x[0])],  # Sorting by total_times
         reverse=True
     )
     sorted_labels, sorted_handles = zip(*sorted_handles_labels)
 
-    # Apply sorted legend
-    plt.legend(sorted_handles, sorted_labels)
+    # Apply sorted legend to axes[0]
+    axes[0].legend(sorted_handles, sorted_labels)
+    axes[0].grid()
 
     # plot settings
     if EXCUSE_STATUS == ExcuseStatus.both:
@@ -179,7 +209,6 @@ def main() -> None:
     else:
         plt.title(f"Unexcused absences")
 
-    plt.grid()
     plt.show()
 
 

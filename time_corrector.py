@@ -54,7 +54,7 @@ AbsenceLine = tp.TypedDict(
         "End date": str,
         "End time": str,
         "Interruptions": tp.Optional[str],  # Might be empty
-        "Reason of Absence": str,
+        "Reason of absence": str,
         "Text/Reason": tp.Optional[str],  # Might be empty
         "Excuse Number": int,
         "Status": str,
@@ -124,8 +124,11 @@ class TimeTable:
                 corrected_absence = absence_line.copy()
 
                 # correct times
-                corrected_absence["start"] = datetime.combine(absence_line["start"].date(), corrected_start)
-                corrected_absence["end"] = datetime.combine(absence_line["end"].date(), corrected_end)
+                start_date = absence_line["start"].date()
+                end_date = absence_line["end"].date()
+
+                corrected_absence["start"] = datetime.combine(start_date, corrected_start)
+                corrected_absence["end"] = datetime.combine(end_date, corrected_end)
 
                 corrected_absence["Start time"] = corrected_start.strftime("%I:%M %p")
                 corrected_absence["End time"] = corrected_end.strftime("%I:%M %p")
@@ -181,9 +184,24 @@ def read_csv(file: str, sep: str = ";") -> tuple[list[AbsenceLine], bool]:
                 time_format
             )
 
+            # show all over 1 year
+            if line["start"].month > 7:
+                year = line["start"].year
+
+                if line["start"].year != 2024:
+                    line["start"] = line["start"].replace(year=2024)
+                    line["end"] = line["end"].replace(year=2024)
+
+            else:
+                year = line["start"].year - 1  # set to starting year (2024/2025 -> 2024)
+
+                if line["start"].year != 2025:
+                    line["start"] = line["start"].replace(year=2025)
+                    line["end"] = line["end"].replace(year=2025)
+
             # try to correct with timetable
-            if line["Class"] in TIMETABLES:
-                data, c = TIMETABLES[line["Class"]].check_correct_absence(line)
+            if year in TIMETABLES and line["Class"] in TIMETABLES[year]:
+                data, c = TIMETABLES[year][line["Class"]].check_correct_absence(line)
                 out.extend(data)
 
                 if c:
@@ -248,67 +266,69 @@ def main() -> None:
 
 # predefined timetables
 TIMETABLES = {
-    "5AHEL": TimeTable(
-        [
-            (time(8, 00), time(13, 20)),
-            (time(14, 10), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(12, 30)),
-            (time(13, 20), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-        ]
-    ),
-    "5CHEL": TimeTable(
-        [
-            (time(8, 00), time(12, 30)),
-            (time(13, 20), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-            (time(14, 10), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(11, 35)),
-            (time(12, 30), time(14, 10))
-        ],
-        [
-            (time(8, 00), time(11, 35)),
-            (time(12, 30), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(12, 30)),
-        ]
-    ),
-    "4BHEL": TimeTable(
-        [
-            (time(8, 00), time(12, 30)),
-            (time(13, 20), time(16, 5))
-        ],
-        [
-            (time(8, 00), time(12, 30)),
-            (time(13, 20), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(12, 30)),
-            (time(13, 20), time(16, 55))
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-        ],
-        [
-            (time(8, 00), time(13, 20)),
-            (time(14, 10), time(16, 55))
-        ]
-    ),
+    2024: {
+        "5AHEL": TimeTable(
+            [
+                (time(8, 00), time(13, 20)),
+                (time(14, 10), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(12, 30)),
+                (time(13, 20), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+            ]
+        ),
+        "5CHEL": TimeTable(
+            [
+                (time(8, 00), time(12, 30)),
+                (time(13, 20), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+                (time(14, 10), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(11, 35)),
+                (time(12, 30), time(14, 10))
+            ],
+            [
+                (time(8, 00), time(11, 35)),
+                (time(12, 30), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(12, 30)),
+            ]
+        ),
+        "4BHEL": TimeTable(
+            [
+                (time(8, 00), time(12, 30)),
+                (time(13, 20), time(16, 5))
+            ],
+            [
+                (time(8, 00), time(12, 30)),
+                (time(13, 20), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(12, 30)),
+                (time(13, 20), time(16, 55))
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+            ],
+            [
+                (time(8, 00), time(13, 20)),
+                (time(14, 10), time(16, 55))
+            ]
+        ),
+    }
 }
 
 
