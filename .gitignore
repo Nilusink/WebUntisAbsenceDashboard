@@ -4,3 +4,5 @@ venv/*
 *.csv
 *.csv.bup
 __pycache__/*
+
+test*.py
