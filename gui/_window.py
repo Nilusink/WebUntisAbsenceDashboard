@@ -5,6 +5,7 @@ Project: WebUntisAbsenceDashboard
 """
 
 from typing import Any
+from platform import system
 
 from analysis import Analysis
 from constants import DATA_DIR
@@ -42,7 +43,12 @@ class Window(DragNDropCTk):
 
         self.title("WebUntisAbsenceDashboard")
         self.geometry(f"{self.winfo_screenwidth() // 2}x{self.winfo_screenheight() // 2}")
-        self.after(1, lambda: self.state("zoom"))
+
+        if system() == "Windows":
+            self.after(1, lambda: self.state("zoom"))
+
+        else:
+            self.after(1, lambda: self.wm_attributes("-zoomed", True))
 
     def __on_drop(self, files: list[str]) -> None:
         Analysis.reload()

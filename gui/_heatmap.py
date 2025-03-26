@@ -48,7 +48,7 @@ class HeatmapCompact(CTkFigure):
                             periods_per_day[weekday][i] += 1
 
                     except KeyError:
-                        print(f"Invalid absence: {absence['start'].strftime("%A, %b %d, %Y, %I:%M %p")}")
+                        print(f"Invalid absence: {absence['start'].strftime('%A, %b %d, %Y, %I:%M %p')}")
 
         # period with maximum number of absences (for color)
         max_per_period = max([periods_per_day[day][period] for day in periods_per_day for period in periods_per_day[day]])
@@ -74,6 +74,16 @@ class HeatmapCompact(CTkFigure):
         self._ax.set_title("Absence Heatmap")
 
         self._ax.yaxis.set_major_formatter(ticker.FuncFormatter(self.minutes_to_time))
+
+        y_ticks = []
+        for p in range(len(TIME_PERIODS)):
+            y_ticks.append(60 * TIME_PERIODS[p][0].hour + TIME_PERIODS[p][0].minute)
+
+            # # append period end if not same as start of new period
+            # if (p+1) < len(TIME_PERIODS) and TIME_PERIODS[p+1][0] != TIME_PERIODS[p][1]:
+            #     y_ticks.append(60 * TIME_PERIODS[p][1].hour + TIME_PERIODS[p][1].minute)
+
+        self._ax.set_yticks(y_ticks)
 
     @staticmethod
     def __color_gradient(value: float, max_value: float) -> tuple[float, float, float]:
