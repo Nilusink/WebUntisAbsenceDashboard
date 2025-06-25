@@ -75,7 +75,7 @@ class ExcuseStatus(Enum):
 # classes
 class TimeTable:
     """
-    basic timetable (only long breaks (lunch brake) included)
+    basic timetable (only long breaks (lunch break) included)
     does not describe what lessons are at which times, just
     at which times there is school
     """
