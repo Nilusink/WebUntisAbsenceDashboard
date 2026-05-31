@@ -3,4 +3,6 @@ venv/*
 .idea/*
 *.csv
 *.csv.bup
-__pycache__/*
+**__pycache__/*
+
+test*.py

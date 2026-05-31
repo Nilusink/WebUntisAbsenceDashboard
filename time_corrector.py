@@ -8,7 +8,7 @@ Author:
 Nilusink
 """
 from tkinter.filedialog import askopenfilename
-from datetime import time, datetime
+from datetime import time, datetime, timedelta
 from enum import Enum
 import typing as tp
 import os
@@ -39,7 +39,8 @@ TRANSLATION_KEY: list[tuple[str, list[str]]] = [
 
 
 # types
-type Period = tuple[time, time]
+# type Period = tuple[time, time]
+Period = tuple
 
 
 AbsenceLine = tp.TypedDict(
@@ -99,48 +100,90 @@ class TimeTable:
         """
         checks if an absence is correct. If not, corrects absence.
         """
-        weekday = absence_line["start"].weekday()  # Monday = 0, Sunday = 6
-        school_periods = self._periods[weekday]
-
-        absence_start = absence_line["start"].time()
-        absence_end = absence_line["end"].time()
-
         corrected_absences = []
+        initial_absences: list[tuple[datetime, datetime]] = []
+
+        # extract date
+        start_date = absence_line["start"].date()
+        end_date = absence_line["end"].date()
+
+        # multi-day absence
+        if start_date != end_date:
+            print(f"multy-day: {absence_line['start'].date()}, "
+                  f"{absence_line['start'].strftime('%H:%M, %A')} - "
+                  f"{absence_line['end'].date()}, "
+                  f"{absence_line['end'].strftime('%H:%M, %A')}")
+
+            for i in range((end_date - start_date).days + 1):
+                date = start_date + timedelta(days=i)
+
+                corrected_start = datetime.combine(date, time(0, 0))
+                corrected_end = datetime.combine(date, time(23, 59))
+
+                if date == start_date:
+                    corrected_start = datetime.combine(date, absence_line["start"].time())
+
+                elif date == end_date:
+                    corrected_end = datetime.combine(date, absence_line["end"].time())
+
+                initial_absences.append((corrected_start, corrected_end))
+
+                print(f" * {corrected_start.date()}, "
+                  f"{corrected_start.strftime('%H:%M, %A')} - "
+                  f"{corrected_end.date()}, "
+                  f"{corrected_end.strftime('%H:%M, %A')}")
+
+        # single-day absences
+        else:
+            initial_absences.append((absence_line["start"], absence_line["end"]))
 
         corrected = False
-        for period_start, period_end in school_periods:
-            if absence_end <= period_start or absence_start >= period_end:
-                continue  # Absence is completely outside this period, skip
+        for absence in initial_absences:
+            absence_start = absence[0].time()
+            absence_end = absence[1].time()
 
-            # Calculate the valid overlapping period
-            corrected_start = max(absence_start, period_start)
-            corrected_end = min(absence_end, period_end)
+            weekday = absence[0].weekday()  # Monday = 0, Sunday = 6
 
-            # keep track if an absence was corrected
-            if corrected_start != absence_start or corrected_end != absence_end:
-                corrected = True
+            try:
+                school_periods = self._periods[weekday]
 
-            if corrected_start < corrected_end:  # Ensure valid period
-                corrected_absence = absence_line.copy()
+            # absence on invalid weekday
+            except IndexError:
+                print(f"invalid absence: ({absence[0].date()}, "
+                      f"{absence[0].strftime('%A')})")
+                continue
 
-                # correct times
-                start_date = absence_line["start"].date()
-                end_date = absence_line["end"].date()
+            for period_start, period_end in school_periods:
+                if absence_end <= period_start or absence_start >= period_end:
+                    continue  # Absence is completely outside this period, skip
 
-                corrected_absence["start"] = datetime.combine(start_date, corrected_start)
-                corrected_absence["end"] = datetime.combine(end_date, corrected_end)
+                # Calculate the valid overlapping period
+                corrected_start = max(absence_start, period_start)
+                corrected_end = min(absence_end, period_end)
 
-                corrected_absence["Start time"] = corrected_start.strftime("%I:%M %p")
-                corrected_absence["End time"] = corrected_end.strftime("%I:%M %p")
+                # keep track if an absence was corrected
+                if corrected_start != absence_start or corrected_end != absence_end:
+                    corrected = True
 
-                corrected_absences.append(corrected_absence)
+                if corrected_start < corrected_end:  # Ensure valid period
+                    corrected_absence = absence_line.copy()
 
-        if corrected:
-            print(f"corrected ({absence_line['start'].date()}, "
-                  f"{absence_line['start'].strftime("%A")}): "
-                  f"{absence_start} - {absence_end} -> {'; '.join(
-                      f'{a['Start time']} - {a['End time']}' for a in corrected_absences
-                  )}")
+                    # correct times
+                    start_date = absence[0].date()
+                    end_date = absence[1].date()
+
+                    corrected_absence["start"] = datetime.combine(start_date, corrected_start)
+                    corrected_absence["end"] = datetime.combine(end_date, corrected_end)
+
+                    corrected_absence["Start time"] = corrected_start.strftime("%I:%M %p")
+                    corrected_absence["End time"] = corrected_end.strftime("%I:%M %p")
+
+                    corrected_absences.append(corrected_absence)
+
+            if corrected:
+                print(f"corrected ({absence[0].date()}, "
+                      f"{absence[0].strftime('%A')}): "
+                      f"{absence_start} - {absence_end} -> {'; '.join(a['Start time'] + '-' + a['End time'] for a in corrected_absences)}")
 
         return corrected_absences, corrected
 
